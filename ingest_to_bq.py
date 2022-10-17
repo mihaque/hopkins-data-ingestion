@@ -1,32 +1,39 @@
 import logging
 import argparse
+import csv
+
 from datetime import datetime
 
 import apache_beam as beam
 from apache_beam.io.gcp.internal.clients import bigquery
-from apache_beam.dataframe.io import read_csv
-from apache_beam.dataframe.convert import to_pcollection
+
 
 class FilterColumns(beam.DoFn):
 
     def __init__(self, indices_list):
-        self.indices = indices_list
+        self.indices = [int(x) for x in indices_list]
 
     def process(self, row):
         bq_rows = {}
+
         try:
-            bq_rows = {
-                'date': datetime.strptime(row[int(self.indices[0])], '%Y-%m-%d %H:%M:%S').date(),
-                'country_region': row[int(self.indices[1])],
-                'province_state': row[int(self.indices[2])],
-                'confirmed': row[int(self.indices[3])],
-                'deaths': row[int(self.indices[4])],
-                'recovered': row[int(self.indices[5])]
-            }
+
+            bq_rows['date'] = datetime.strptime(row[self.indices[0]], '%Y-%m-%d %H:%M:%S').date()
+            bq_rows['country_region'] = str(row[self.indices[1]])
+            bq_rows['province_state'] = str(row[self.indices[2]])
+            bq_rows['confirmed'] = int(row[self.indices[3]]) if row[self.indices[3]] != '' else ''
+            bq_rows['deaths'] = int(row[self.indices[4]]) if row[self.indices[4]] != '' else ''
+            bq_rows['recovered'] = int(row[self.indices[5]]) if row[self.indices[5]] != '' else ''
+
             yield bq_rows
-        except ValueError:
-            logging.error(f"Issues in the record: {row}")
+        except ValueError as error:
+            logging.error(f"Issues in the record: {row} -> {str(error)}")
             # TO DO: implement errors bucket push
+
+
+def parse_file(element):
+    for line in csv.reader([element], quotechar='"', delimiter=',', quoting=csv.QUOTE_ALL, skipinitialspace=True):
+        return line
 
 
 def get_table_schema():
@@ -42,7 +49,7 @@ def get_table_schema():
     field = bigquery.TableFieldSchema()
     field.name = 'country_region'
     field.type = 'string'
-    field.mode = 'required'
+    field.mode = 'nullable'
     table_schema.fields.append(field)
 
     field = bigquery.TableFieldSchema()
@@ -54,49 +61,43 @@ def get_table_schema():
     field = bigquery.TableFieldSchema()
     field.name = 'confirmed'
     field.type = 'int64'
-    field.mode = 'required'
+    field.mode = 'nullable'
     table_schema.fields.append(field)
 
     field = bigquery.TableFieldSchema()
     field.name = 'deaths'
     field.type = 'int64'
-    field.mode = 'required'
+    field.mode = 'nullable'
     table_schema.fields.append(field)
 
     field = bigquery.TableFieldSchema()
     field.name = 'recovered'
     field.type = 'int64'
-    field.mode = 'required'
+    field.mode = 'nullable'
     table_schema.fields.append(field)
 
     return table_schema
 
 
 def run(argv=None):
-    """Run the workflow."""
+
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--input_file', required=True)
     parser.add_argument('--dest_table', required=True, help=(
-        'Output BigQuery table for results specified as: PROJECT:DATASET.TABLE or DATASET.TABLE.'))
+        'Output BigQuery table for results specified as: DATASET.TABLE.'))
     parser.add_argument('--indices_list', required=True, help='list of indices to filter it out')
 
     known_args, pipeline_args = parser.parse_known_args(argv)
 
-    table_spec = bigquery.TableReference(
-        projectId='analytics-plp-dev',
-        datasetId='test_mohaque',
-        tableId='test_data'
-    )
-
     with beam.Pipeline(argv=pipeline_args) as pipeline:
 
         file_contents = pipeline | 'Read from CSV' >> beam.io.ReadFromText(file_pattern=known_args.input_file, skip_header_lines=1)
-        list_of_rows = file_contents | 'Split CSV into lists' >> beam.Map(lambda text_row: text_row.split(","))
+        list_of_rows = file_contents | 'Split CSV into lists' >> beam.Map(parse_file)
         filtered_rows = list_of_rows | 'Filter columns from rows' >> beam.ParDo(
             FilterColumns(known_args.indices_list.split(',')))
         filtered_rows | 'Write into BigQuery' >> beam.io.WriteToBigQuery(
-            table_spec,
+            known_args.dest_table,
             schema=get_table_schema(),
             create_disposition=beam.io.BigQueryDisposition.CREATE_IF_NEEDED,
             write_disposition=beam.io.BigQueryDisposition.WRITE_TRUNCATE)
