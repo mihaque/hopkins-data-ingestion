@@ -26,3 +26,15 @@ python ingest_to_bq_dataflow.py --input_file=csv_file_pattern --dest_table=hopki
 ```
 python ingest_to_bq_dataflow.py --input_file=csv_file_pattern --dest_table=hopkins_data.hopkins_staging --indices_list="4, 3, 2, 7, 8, 9" --temp_location=gs://temporary_location --runner=dataflow --project=gcloud-project --region=gcloud-dataflow-region-to-run
 ```
+
+#### Dataflow
+![Data Flow](https://github.com/mihaque/hopkins-data-ingestion/blob/master/screenshots/dataflow_run.png)
+
+
+#### Destination Table
+![Destination Table](https://github.com/mihaque/hopkins-data-ingestion/blob/master/screenshots/destinayion_table.png)
+
+
+#### Country Wise Reports
+![Country Reports](https://github.com/mihaque/hopkins-data-ingestion/blob/master/screenshots/country_wise_reports_snapshot.png)
+
