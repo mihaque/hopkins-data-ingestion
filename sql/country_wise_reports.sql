@@ -1,11 +1,11 @@
-CREATE OR REPLACE VIEW `PROJECT_ID.hopkins_covid.hopkins_covid_country_wise_report` AS (
+CREATE OR REPLACE VIEW `PROJECT_ID.hopkins_data.hopkins_covid_country_wise_report` AS (
   WITH LAST_MONTH_DATA AS (
-  SELECT * FROM `PROJECT_ID.hopkins_covid.hopkins_covid_final`
+  SELECT * FROM `PROJECT_ID.hopkins_covid.hopkins_final`
     WHERE date BETWEEN DATE_ADD(CURRENT_DATE(), INTERVAL -1 month) AND CURRENT_DATE()
 ),
 
 PREVIOUS_MONTH_DATA AS (
-  SELECT * FROM `PROJECT_ID.hopkins_covid.hopkins_covid_final`
+  SELECT * FROM `PROJECT_ID.hopkins_covid.hopkins_final`
     WHERE date BETWEEN DATE_ADD(CURRENT_DATE(), INTERVAL -2 month) AND DATE_ADD(CURRENT_DATE(), INTERVAL -1 month)
 )
 
