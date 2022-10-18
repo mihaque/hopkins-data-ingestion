@@ -1,5 +1,7 @@
 # hopkins-data-ingestion
 Demonstration of Hopkins covid data ingestion from Github to BigQuery
+## Logical Flow
+![Logical Flow](https://github.com/mihaque/hopkins-data-ingestion/blob/master/screenshots/hopkins_ingestion_logical_flow.png)
 
 
 ## How to run the dataflow
